@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { index, mysqlTableCreator, primaryKey } from "drizzle-orm/mysql-core";
+import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
 /**
@@ -8,27 +8,27 @@ import { type AdapterAccount } from "next-auth/adapters";
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
-export const createTable = mysqlTableCreator((name) => `vibecheck_${name}`);
+export const createTable = pgTableCreator((name) => `testy_${name}`);
 
 export const posts = createTable(
   "post",
   (d) => ({
-    id: d.bigint({ mode: "number" }).primaryKey().autoincrement(),
+    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
     name: d.varchar({ length: 256 }),
     createdById: d
       .varchar({ length: 255 })
       .notNull()
       .references(() => users.id),
     createdAt: d
-      .timestamp()
+      .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: d.timestamp().onUpdateNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [
     index("created_by_idx").on(t.createdById),
     index("name_idx").on(t.name),
-  ],
+  ]
 );
 
 export const users = createTable("user", (d) => ({
@@ -42,15 +42,14 @@ export const users = createTable("user", (d) => ({
   emailVerified: d
     .timestamp({
       mode: "date",
-      fsp: 3,
+      withTimezone: true,
     })
-    .default(sql`CURRENT_TIMESTAMP(3)`),
+    .default(sql`CURRENT_TIMESTAMP`),
   image: d.varchar({ length: 255 }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
-  sessions: many(sessions),
 }));
 
 export const accounts = createTable(
@@ -65,18 +64,16 @@ export const accounts = createTable(
     providerAccountId: d.varchar({ length: 255 }).notNull(),
     refresh_token: d.text(),
     access_token: d.text(),
-    expires_at: d.int(),
+    expires_at: d.integer(),
     token_type: d.varchar({ length: 255 }),
     scope: d.varchar({ length: 255 }),
     id_token: d.text(),
     session_state: d.varchar({ length: 255 }),
   }),
   (t) => [
-    primaryKey({
-      columns: [t.provider, t.providerAccountId],
-    }),
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
     index("account_user_id_idx").on(t.userId),
-  ],
+  ]
 );
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -91,9 +88,9 @@ export const sessions = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => users.id),
-    expires: d.timestamp({ mode: "date" }).notNull(),
+    expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
   }),
-  (t) => [index("session_user_id_idx").on(t.userId)],
+  (t) => [index("t_user_id_idx").on(t.userId)]
 );
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -105,7 +102,7 @@ export const verificationTokens = createTable(
   (d) => ({
     identifier: d.varchar({ length: 255 }).notNull(),
     token: d.varchar({ length: 255 }).notNull(),
-    expires: d.timestamp({ mode: "date" }).notNull(),
+    expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
   }),
-  (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })]
 );

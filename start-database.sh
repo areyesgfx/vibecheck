@@ -11,6 +11,7 @@
 
 # On Linux and macOS you can run this script directly - `./start-database.sh`
 
+# import env variables from .env
 set -a
 source .env
 
@@ -61,7 +62,7 @@ if [ "$($DOCKER_CMD ps -q -a -f name=$DB_CONTAINER_NAME)" ]; then
   exit 0
 fi
 
-if [ "$DB_PASSWORD" == "password" ]; then
+if [ "$DB_PASSWORD" = "password" ]; then
   echo "You are using the default database password"
   read -p "Should we generate a random password for you? [y/N]: " -r REPLY
   if ! [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -75,7 +76,8 @@ fi
 
 $DOCKER_CMD run -d \
   --name $DB_CONTAINER_NAME \
-  -e MYSQL_ROOT_PASSWORD="$DB_PASSWORD" \
-  -e MYSQL_DATABASE="$DB_NAME" \
-  -p "$DB_PORT":3306 \
-  docker.io/mysql && echo "Database container '$DB_CONTAINER_NAME' was successfully created"
+  -e POSTGRES_USER="postgres" \
+  -e POSTGRES_PASSWORD="$DB_PASSWORD" \
+  -e POSTGRES_DB="$DB_NAME" \
+  -p "$DB_PORT":5432 \
+  docker.io/postgres && echo "Database container '$DB_CONTAINER_NAME' was successfully created"
